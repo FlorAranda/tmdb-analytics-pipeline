@@ -1,0 +1,997 @@
+{
+  "datasets": [
+    {
+      "name": "c2e531ab",
+      "displayName": "Total Movies",
+      "queryLines": [
+        "--Total Movies\r\n",
+        "SELECT COUNT(DISTINCT movie_key) AS total_movies\r\n",
+        "FROM analisis_tmdb.gold.fact_movies;"
+      ]
+    },
+    {
+      "name": "2eb3e282",
+      "displayName": "Total votes",
+      "queryLines": [
+        "-- Total votes\r\n",
+        "WITH movies AS (\r\n",
+        "    SELECT\r\n",
+        "        movie_key,\r\n",
+        "        MAX(vote_count) AS vote_count\r\n",
+        "    FROM analisis_tmdb.gold.fact_movies\r\n",
+        "    GROUP BY movie_key\r\n",
+        ")\r\n",
+        "SELECT SUM(vote_count) AS total_votes\r\n",
+        "FROM movies;"
+      ]
+    },
+    {
+      "name": "060688c6",
+      "displayName": "Top Rated Movie",
+      "queryLines": [
+        "--Top Rated Movie\r\n",
+        "WITH movies AS (\r\n",
+        "    SELECT\r\n",
+        "        f.movie_key,\r\n",
+        "        MAX(f.vote_average) AS vote_average,\r\n",
+        "        MAX(f.vote_count) AS vote_count\r\n",
+        "    FROM analisis_tmdb.gold.fact_movies f\r\n",
+        "    GROUP BY f.movie_key\r\n",
+        ")\r\n",
+        "\r\n",
+        "SELECT\r\n",
+        "    m.title,\r\n",
+        "    vote_average,\r\n",
+        "    vote_count\r\n",
+        "FROM movies mv\r\n",
+        "JOIN analisis_tmdb.gold.dim_movies m\r\n",
+        "    ON mv.movie_key = m.movie_key\r\n",
+        "WHERE vote_count >= 1000\r\n",
+        "ORDER BY vote_average DESC\r\n",
+        "LIMIT 1;"
+      ]
+    },
+    {
+      "name": "5a69722c",
+      "displayName": "Genre Distribution",
+      "queryLines": [
+        "--Genre Distribution\r\n",
+        "SELECT g.genre_name,\r\n",
+        "       COUNT(*) AS total_movies\r\n",
+        "FROM analisis_tmdb.gold.fact_movies f\r\n",
+        "JOIN analisis_tmdb.gold.dim_genres g\r\n",
+        "  ON f.genre_key = g.genre_key\r\n",
+        "GROUP BY g.genre_name\r\n",
+        "ORDER BY total_movies DESC;"
+      ]
+    },
+    {
+      "name": "7055e193",
+      "displayName": "Average Movie Rating by Genre (Weighted)",
+      "queryLines": [
+        "WITH movies AS (\r\n",
+        "    SELECT\r\n",
+        "        f.movie_key,\r\n",
+        "        f.genre_key,\r\n",
+        "        MAX(f.vote_average) AS vote_average,\r\n",
+        "        MAX(f.vote_count) AS vote_count\r\n",
+        "    FROM analisis_tmdb.gold.fact_movies f\r\n",
+        "    GROUP BY f.movie_key, f.genre_key\r\n",
+        ")\r\n",
+        "\r\n",
+        "SELECT\r\n",
+        "    g.genre_name,\r\n",
+        "    ROUND(SUM(vote_average * vote_count) / SUM(vote_count),2) AS weighted_rating\r\n",
+        "FROM movies m\r\n",
+        "JOIN analisis_tmdb.gold.dim_genres g\r\n",
+        "  ON m.genre_key = g.genre_key\r\n",
+        "GROUP BY g.genre_name\r\n",
+        "ORDER BY weighted_rating DESC;"
+      ]
+    },
+    {
+      "name": "7bd3ff22",
+      "displayName": "Popularity vs Rating",
+      "queryLines": [
+        "WITH movies AS (\r\n",
+        "    SELECT\r\n",
+        "        m.title,\r\n",
+        "        MAX(vote_average) AS vote_average,\r\n",
+        "        MAX(popularity) AS popularity,\r\n",
+        "        MAX(vote_count) AS vote_count\r\n",
+        "    FROM analisis_tmdb.gold.fact_movies f\r\n",
+        "    JOIN analisis_tmdb.gold.dim_movies m \r\n",
+        "    ON f.movie_key = m.movie_key \r\n",
+        "    GROUP BY m.title\r\n",
+        ")\r\n",
+        "SELECT *, CASE\r\n",
+        "        WHEN vote_average >= 7.5 AND popularity <= 10 THEN 'Hidden Gems'\r\n",
+        "        ELSE 'Other'\r\n",
+        "    END AS category\r\n",
+        "FROM movies\r\n",
+        "WHERE vote_count >= 1000\r\n",
+        "--AND vote_average >= 7.5\r\n",
+        "--AND popularity <= 10\r\n",
+        "\r\n",
+        ";"
+      ]
+    },
+    {
+      "name": "cc9fa06b",
+      "displayName": "Movies by year",
+      "queryLines": [
+        "SELECT\r\n",
+        "    release_year,\r\n",
+        "    COUNT(*) AS total_movies\r\n",
+        "FROM analisis_tmdb.gold.dim_movies\r\n",
+        "GROUP BY release_year\r\n",
+        "ORDER BY release_year;"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "ed8b8645",
+      "displayName": "Dashboard TMDB",
+      "layout": [
+        {
+          "widget": {
+            "name": "4684486a",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "060688c6",
+                  "fields": [
+                    {
+                      "name": "title",
+                      "expression": "`title`"
+                    },
+                    {
+                      "name": "vote_average",
+                      "expression": "`vote_average`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Top Rated Movie",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "vote_average",
+                  "displayName": "Vote Count"
+                },
+                "target": {
+                  "fieldName": "title",
+                  "displayName": "Movie Title"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "total-movies",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c2e531ab",
+                  "fields": [
+                    {
+                      "name": "total_movies",
+                      "expression": "`total_movies`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showDescription": false,
+                "title": "Total Movies",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "total_movies",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "total-votes",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "2eb3e282",
+                  "fields": [
+                    {
+                      "name": "total_votes",
+                      "expression": "`total_votes`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Total Votes",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "total_votes",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 2,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "8d1dedef",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "5a69722c",
+                  "fields": [
+                    {
+                      "name": "total_movies",
+                      "expression": "`total_movies`"
+                    },
+                    {
+                      "name": "genre_name",
+                      "expression": "`genre_name`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`genre_name` IN (`genre_name`) OR TRUE"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Genre Distribution",
+                "showTitle": true
+              },
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "total_movies",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "hideTitle": true
+                  },
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  },
+                  "displayName": "Total movies"
+                },
+                "color": {
+                  "fieldName": "genre_name",
+                  "legend": {
+                    "position": "right",
+                    "hideTitle": false,
+                    "hide": false
+                  },
+                  "displayName": "Genre",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "natural-order"
+                    },
+                    "mappings": [
+                      {
+                        "value": "Family",
+                        "color": "#079D3C"
+                      },
+                      {
+                        "value": "Animation",
+                        "color": "#C8FF35"
+                      },
+                      {
+                        "value": "Mystery",
+                        "color": "#9273E8"
+                      },
+                      {
+                        "value": "History",
+                        "color": "#F285F7"
+                      },
+                      {
+                        "value": "War",
+                        "color": "#3A64F0"
+                      },
+                      {
+                        "value": "TV Movie",
+                        "color": "#C7D585"
+                      },
+                      {
+                        "value": "Documentary",
+                        "color": "#95D6D7"
+                      },
+                      {
+                        "value": "Western",
+                        "color": "#CA5583"
+                      },
+                      {
+                        "value": "Action",
+                        "color": "#A85BDE"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "average-movie-rating-by-genre",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7055e193",
+                  "fields": [
+                    {
+                      "name": "weighted_rating",
+                      "expression": "`weighted_rating`"
+                    },
+                    {
+                      "name": "genre_name",
+                      "expression": "`genre_name`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`genre_name` IN (`genre_name`) OR TRUE"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "showTitle": true,
+                "title": "Average Movie Rating by Genre"
+              },
+              "mark": {
+                "colors": [
+                  "#214896",
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "weighted_rating",
+                  "axis": {
+                    "title": "Weighted Rating",
+                    "hideLabels": false,
+                    "hideGrid": false
+                  },
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  },
+                  "displayName": "Weighted Rating",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "genre_name",
+                  "axis": {
+                    "title": "Genre"
+                  },
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": false
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 4,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "popularity-vs-rating",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7bd3ff22",
+                  "fields": [
+                    {
+                      "name": "category",
+                      "expression": "`category`"
+                    },
+                    {
+                      "name": "title",
+                      "expression": "`title`"
+                    },
+                    {
+                      "name": "vote_count",
+                      "expression": "`vote_count`"
+                    },
+                    {
+                      "name": "popularity",
+                      "expression": "`popularity`"
+                    },
+                    {
+                      "name": "vote_average",
+                      "expression": "`vote_average`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "showTitle": true,
+                "title": "Popularity vs Rating"
+              },
+              "mark": {
+                "colors": [
+                  "#33126E",
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
+              },
+              "widgetType": "scatter",
+              "encodings": {
+                "x": {
+                  "fieldName": "popularity",
+                  "axis": {
+                    "title": "Popularity"
+                  },
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  },
+                  "scale": {
+                    "type": "quantitative",
+                    "domain": {
+                      "max": 200
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "vote_average",
+                  "axis": {
+                    "title": "Vote average"
+                  },
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  },
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "category",
+                  "legend": {
+                    "title": "Category"
+                  },
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "Hidden Gems",
+                        "color": "#5C0C94"
+                      },
+                      {
+                        "value": "Other",
+                        "color": "#865587"
+                      }
+                    ],
+                    "sort": {
+                      "by": "custom-order",
+                      "orderedValues": [
+                        "Hidden Gems",
+                        "Other"
+                      ]
+                    }
+                  }
+                },
+                "size": {
+                  "fieldName": "vote_count",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                },
+                "extra": [
+                  {
+                    "fieldName": "title",
+                    "displayName": "Title"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 10,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "movies-by-year",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "cc9fa06b",
+                  "fields": [
+                    {
+                      "name": "release_year",
+                      "expression": "`release_year`"
+                    },
+                    {
+                      "name": "total_movies",
+                      "expression": "`total_movies`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "showTitle": true,
+                "title": "Movies by Year"
+              },
+              "mark": {
+                "colors": [
+                  "#34834C",
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
+              },
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "release_year",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    },
+                    "hideGroupSeparator": true
+                  },
+                  "axis": {
+                    "title": "Release Year"
+                  },
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "total_movies",
+                  "axis": {
+                    "title": "Total Movies"
+                  },
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "genre1",
+            "queries": [
+              {
+                "name": "dashboards/01f122f0e580168cb5e72b423fad21b2/datasets/01f123450c161e6d886cbee2441601e1_genre_name",
+                "query": {
+                  "datasetName": "5a69722c",
+                  "fields": [
+                    {
+                      "name": "genre_name",
+                      "expression": "`genre_name`"
+                    },
+                    {
+                      "name": "genre_name_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f122f0e580168cb5e72b423fad21b2/datasets/01f123452eeb1a6197d136bb859e3df6_genre_name",
+                "query": {
+                  "datasetName": "7055e193",
+                  "fields": [
+                    {
+                      "name": "genre_name",
+                      "expression": "`genre_name`"
+                    },
+                    {
+                      "name": "genre_name_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Genre"
+              },
+              "scale": {
+                "type": "categorical",
+                "sort": {
+                  "by": "custom-order",
+                  "orderedValues": [
+                    "Action",
+                    "Adventure",
+                    "Animation",
+                    "Comedy",
+                    "Crime",
+                    "Documentary",
+                    "Drama",
+                    "Family",
+                    "Fantasy",
+                    "History",
+                    "Horror",
+                    "Music",
+                    "Mystery",
+                    "Romance",
+                    "Science Fiction",
+                    "Thriller",
+                    "TV Movie",
+                    "War",
+                    "Western"
+                  ]
+                }
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "genre_name",
+                    "queryName": "dashboards/01f122f0e580168cb5e72b423fad21b2/datasets/01f123450c161e6d886cbee2441601e1_genre_name"
+                  },
+                  {
+                    "fieldName": "genre_name",
+                    "queryName": "dashboards/01f122f0e580168cb5e72b423fad21b2/datasets/01f123452eeb1a6197d136bb859e3df6_genre_name"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 1,
+            "width": 4,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "vore-average",
+            "queries": [
+              {
+                "name": "dashboards/01f122f0e580168cb5e72b423fad21b2/datasets/01f1234b461d1a6ea6bd376a31b677d8_vote_average",
+                "query": {
+                  "datasetName": "7bd3ff22",
+                  "fields": [
+                    {
+                      "name": "min(vote_average)",
+                      "expression": "MIN(`vote_average`)"
+                    },
+                    {
+                      "name": "max(vote_average)",
+                      "expression": "MAX(`vote_average`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Vote AVG"
+              },
+              "widgetType": "range-slider",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "vote_average",
+                    "queryName": "dashboards/01f122f0e580168cb5e72b423fad21b2/datasets/01f1234b461d1a6ea6bd376a31b677d8_vote_average"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 1,
+            "width": 4,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "85024897",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## <span style=\"text-align:center;display:block\"><span style=\"font-size:32px\">TMDB Movie Analysis</span></span>"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 1
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#11171C"
+      },
+      "widgetBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#11171C"
+      },
+      "widgetBorderColor": {
+        "light": "#FFFFFF",
+        "dark": "#11171C"
+      },
+      "fontColor": {
+        "light": "#11171C",
+        "dark": "#E8ECF0"
+      },
+      "selectionColor": {
+        "light": "#2272B4",
+        "dark": "#8ACAFF"
+      },
+      "visualizationColors": [
+        "#077A9D",
+        "#FFAB00",
+        "#00A972",
+        "#FF3621",
+        "#8BCAE7",
+        "#AB4057",
+        "#99DDB4",
+        "#FCA4A1",
+        "#919191",
+        "#BF7080"
+      ],
+      "widgetHeaderAlignment": "LEFT"
+    },
+    "applyModeEnabled": false
+  }
+}
