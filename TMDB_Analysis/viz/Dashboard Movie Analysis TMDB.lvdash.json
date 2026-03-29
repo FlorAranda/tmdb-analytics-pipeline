@@ -13,7 +13,6 @@
       "name": "2eb3e282",
       "displayName": "Total votes",
       "queryLines": [
-        "-- Total votes\r\n",
         "WITH movies AS (\r\n",
         "    SELECT\r\n",
         "        movie_key,\r\n",
@@ -390,7 +389,7 @@
             "x": 0,
             "y": 4,
             "width": 6,
-            "height": 6
+            "height": 7
           }
         },
         {
@@ -486,16 +485,42 @@
                   },
                   "displayName": "Weighted Rating",
                   "scale": {
-                    "type": "quantitative"
+                    "type": "quantitative",
+                    "reverse": false
                   }
                 },
                 "y": {
                   "fieldName": "genre_name",
                   "axis": {
-                    "title": "Genre"
+                    "title": "Genre",
+                    "hideLabels": false
                   },
                   "scale": {
-                    "type": "categorical"
+                    "type": "categorical",
+                    "sort": {
+                      "by": "custom-order",
+                      "orderedValues": [
+                        "History",
+                        "War",
+                        "Western",
+                        "Music",
+                        "Drama",
+                        "Crime",
+                        "Animation",
+                        "Romance",
+                        "Documentary",
+                        "Family",
+                        "Mystery",
+                        "Adventure",
+                        "Thriller",
+                        "Science Fiction",
+                        "Fantasy",
+                        "Comedy",
+                        "Action",
+                        "TV Movie",
+                        "Horror"
+                      ]
+                    }
                   }
                 },
                 "label": {
@@ -508,7 +533,7 @@
             "x": 6,
             "y": 4,
             "width": 6,
-            "height": 6
+            "height": 7
           }
         },
         {
@@ -597,7 +622,7 @@
                 "x": {
                   "fieldName": "popularity",
                   "axis": {
-                    "title": "Popularity"
+                    "title": "TMDB Popularity Score"
                   },
                   "format": {
                     "type": "number-plain",
@@ -682,9 +707,9 @@
           },
           "position": {
             "x": 6,
-            "y": 10,
+            "y": 11,
             "width": 6,
-            "height": 5
+            "height": 6
           }
         },
         {
@@ -790,9 +815,9 @@
           },
           "position": {
             "x": 0,
-            "y": 10,
+            "y": 11,
             "width": 6,
-            "height": 5
+            "height": 6
           }
         },
         {
