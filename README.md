@@ -104,6 +104,24 @@ The dashboard was designed to answer key business questions about movie performa
 
 ---
 
+## Configuration
+
+This project uses the TMDB API.
+To run the notebooks you need to create an API key.
+
+1. Create an account at The Movie Database.
+2. Generate your API key in **Settings → API**.
+
+Then create a `.env` file in the root of the project:
+
+```
+TMDB_API_KEY=your_api_key_here
+```
+
+The notebooks will load this variable automatically using `python-dotenv`.
+
+---
+
 ## 🚀 How to Run
 
 1. Ingest data into Bronze layer
